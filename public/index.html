@@ -3,43 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>开奖记录</title> <!-- 默认标题 -->
+    <title>开奖中心</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#343a40">
+    <meta name="theme-color" content="#1a1a1a">
 </head>
 <body>
-    <nav class="navbar">
+    <header class="navbar">
         <div class="container">
             <span class="navbar-brand">彩票中心</span>
-            <div class="navbar-links">
-                <!-- 导航链接，通过 URL 参数切换彩票类型 -->
-                <a href="/?type=HK" class="nav-link">香港彩</a>
-                <a href="/?type=XINAO" class="nav-link">新澳彩</a>
-                <a href="/?type=LAOAO" class="nav-link">老澳彩</a>
-                <a href="/?type=LAOAO_2230" class="nav-link">老澳彩22:30</a>
-            </div>
+            <nav id="lottery-nav" class="navbar-links">
+                <a href="/?type=HK" data-type="HK">香港彩</a>
+                <a href="/?type=XINAO" data-type="XINAO">新澳彩</a>
+                <a href="/?type=LAOAO" data-type="LAOAO">老澳彩</a>
+            </nav>
         </div>
-    </nav>
+    </header>
 
-    <div class="container content">
-        <!-- JS 将会把标题和表格渲染到这里 -->
-        <h1>开奖记录</h1>
-        <main id="app"></main> 
-    </div>
+    <main class="container content">
+        <div id="main-display">
+            <section id="latest-result" class="card">
+                <h2 class="card-title">最新开奖</h2>
+                <div id="latest-result-content" class="card-content">
+                    <!-- JS 动态加载最新开奖结果 -->
+                    <p>加载中...</p>
+                </div>
+            </section>
 
-    <!-- 引入我们的主脚本 -->
+            <section id="prediction-result" class="card">
+                <h2 class="card-title">下期预测</h2>
+                <div id="prediction-result-content" class="card-content">
+                    <!-- JS 动态加载预测结果 -->
+                    <p>暂无预测</p>
+                </div>
+            </section>
+        </div>
+
+        <div class="history-toggle">
+             <button id="toggle-history-btn">查看历史记录</button>
+        </div>
+
+        <section id="history-records" class="card hidden">
+            <h2 class="card-title">历史开奖记录</h2>
+            <div id="history-records-content" class="card-content">
+                <!-- JS 动态加载历史表格 -->
+            </div>
+        </section>
+    </main>
+
     <script src="app.js"></script>
-
     <script>
         // 注册 Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
+                navigator.serviceWorker.register('/sw.js').then(reg => console.log('SW registered!', reg)).catch(err => console.log('SW registration failed: ', err));
             });
         }
     </script>
