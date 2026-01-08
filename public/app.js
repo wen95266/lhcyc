@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. 从 URL 获取彩票类型，并设置默认值
     const params = new URLSearchParams(window.location.search);
-    const lotteryType = params.get('type') || 'HK'; // 默认显示香港彩
+    const lotteryType = params.get('type') || 'HK';
 
     // 3. 更新导航栏高亮状态
     updateActiveNav(lotteryType, lotteryNav);
@@ -25,6 +25,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 6. 注册 Service Worker 并在有更新时提示用户
+    registerServiceWorker();
+
+    /**
+     * 注册 Service Worker 并处理更新逻辑
+     */
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW registered!', reg);
+
+                    // 如果检测到有新的 SW 正在等待激活
+                    if (reg.waiting) {
+                        showUpdatePrompt(reg.waiting);
+                    }
+
+                    // 监听新的 SW 安装过程
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdatePrompt(newWorker);
+                            }
+                        });
+                    });
+                });
+
+                // 处理刷新逻辑
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                });
+            });
+        }
+    }
+
+    /**
+     * 显示更新提示框
+     */
+    function showUpdatePrompt(worker) {
+        const prompt = document.createElement('div');
+        prompt.className = 'update-prompt';
+        prompt.innerHTML = `
+            <div class="update-prompt-content">
+                <span>发现新版本，是否立即更新？</span>
+                <button id="update-confirm-btn">立即更新</button>
+            </div>
+        `;
+        document.body.appendChild(prompt);
+
+        document.getElementById('update-confirm-btn').addEventListener('click', () => {
+            worker.postMessage('SKIP_WAITING');
+            prompt.remove();
+        });
+    }
+
     /**
      * 主函数：并行获取所有数据并触发渲染
      */
@@ -34,42 +93,30 @@ document.addEventListener('DOMContentLoaded', () => {
         predictionResultContent.innerHTML = '<p class="loading-placeholder">正在加载预测...</p>';
         historyRecordsContent.innerHTML = '<p class="loading-placeholder">正在加载历史记录...</p>';
 
-        // 并行发起两个请求
         Promise.all([
             fetch(`/api/data?type=${type}`),
             fetch(`/api/predictions?type=${type}`)
         ]).then(async ([recordsRes, predictionRes]) => {
-            // 处理开奖记录
+            // 开奖记录处理
             if (recordsRes.ok) {
                 const records = await recordsRes.json();
-                if (records.error || records.length === 0) {
-                    latestResultContent.innerHTML = '<p>暂无开奖记录。</p>';
-                    historyRecordsContent.innerHTML = '<p>暂无历史记录。</p>';
-                } else {
+                if (records.length > 0) {
                     renderLatestResult(records[0], latestResultContent);
                     renderHistoryRecords(records, historyRecordsContent);
+                } else {
+                    latestResultContent.innerHTML = '<p>暂无开奖记录。</p>';
                 }
-            } else {
-                 latestResultContent.innerHTML = '<p class="error">开奖记录加载失败。</p>';
-                 historyRecordsContent.innerHTML = '<p class="error">历史记录加载失败。</p>';
             }
-
-            // 处理预测结果
+            
+            // 预测数据处理
             if (predictionRes.ok) {
                 const prediction = await predictionRes.json();
-                if (prediction.error) {
-                    predictionResultContent.innerHTML = '<p>暂无可用预测，请通过机器人生成。</p>';
-                } else {
-                    renderPrediction(prediction, predictionResultContent);
-                }
+                renderPrediction(prediction, predictionResultContent);
             } else {
-                 predictionResultContent.innerHTML = '<p class="error">预测加载失败，请通过机器人生成。</p>';
+                predictionResultContent.innerHTML = '<p>暂无可用预测，请通过机器人生成。</p>';
             }
-        }).catch(error => {
-            console.error('Fetch Error:', error);
-            latestResultContent.innerHTML = '<p class="error">数据加载出错。</p>';
-            predictionResultContent.innerHTML = '<p class="error">数据加载出错。</p>';
-            historyRecordsContent.innerHTML = '<p class="error">数据加载出错。</p>';
+        }).catch(err => {
+            console.error('Fetch error:', err);
         });
     }
 
@@ -82,11 +129,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const specialNumber = numbers[1];
 
         const getWaveColor = (wave) => {
-            if (!wave) return 'var(--text-color)';
-            if (wave.includes('红')) return '#e74c3c'; // Red
-            if (wave.includes('蓝')) return '#3498db'; // Blue
-            if (wave.includes('绿')) return '#2ecc71'; // Green
-            return 'var(--text-color)';
+            if (!wave) return 'inherit';
+            if (wave.includes('红')) return '#e74c3c';
+            if (wave.includes('蓝')) return '#3498db';
+            if (wave.includes('绿')) return '#2ecc71';
+            return 'inherit';
         }
 
         container.innerHTML = `
@@ -103,9 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
     }
-    
+
     /**
-     * 渲染预测结果卡片
+     * 渲染预测结果
      */
     function renderPrediction(prediction, container) {
         container.innerHTML = `
@@ -121,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * 渲染历史记录表格
+     * 渲染历史记录
      */
     function renderHistoryRecords(records, container) {
         container.innerHTML = `

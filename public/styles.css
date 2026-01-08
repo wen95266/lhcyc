@@ -1,10 +1,11 @@
+
 :root {
     --primary-color: #007bff;
-    --bg-color: #121212;
-    --card-bg-color: #1e1e1e;
-    --text-color: #e0e0e0;
-    --text-muted-color: #8e8e8e;
-    --border-color: #2c2c2c;
+    --bg-color: #f8f9fa;
+    --card-bg-color: #ffffff;
+    --text-color: #212529;
+    --text-muted-color: #6c757d;
+    --border-color: #dee2e6;
     --success-color: #28a745;
     --error-color: #dc3545;
 }
@@ -30,6 +31,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .navbar .container {
@@ -41,6 +43,7 @@ body {
 .navbar-brand {
     font-size: 1.5rem;
     font-weight: bold;
+    color: var(--primary-color);
 }
 
 .navbar-links a {
@@ -50,6 +53,11 @@ body {
     padding: 0.3rem 0.7rem;
     border-radius: 5px;
     transition: all 0.3s ease;
+}
+
+.navbar-links a:hover {
+    color: var(--primary-color);
+    background-color: #e9ecef;
 }
 
 .navbar-links a.active {
@@ -68,7 +76,7 @@ body {
     border-radius: 10px;
     margin-bottom: 1.5rem;
     padding: 1.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .card-title {
@@ -77,18 +85,14 @@ body {
     font-size: 1.8rem;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
+    color: var(--text-color);
 }
 
-/* 通用加载与错误提示 */
-.loading-placeholder,
-.error-placeholder {
+/* 加载提示 */
+.loading-placeholder {
     text-align: center;
     color: var(--text-muted-color);
     padding: 2rem;
-}
-
-.error-placeholder {
-    color: var(--error-color);
 }
 
 /* 最新开奖 */
@@ -100,9 +104,10 @@ body {
 }
 
 .info-item {
-    background: var(--bg-color);
+    background: #f8f9fa;
     padding: 1rem;
     border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
 .info-item h3 {
@@ -141,10 +146,10 @@ body {
 }
 
 .code-ball.special-ball {
-    background-color: var(--success-color); /* 特码用不同颜色 */
+    background-color: var(--success-color);
 }
 
-/* 下期预测卡片样式 */
+/* 下期预测 */
 .prediction-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -152,9 +157,10 @@ body {
 }
 
 .prediction-item {
-    background: var(--bg-color);
+    background: #f8f9fa;
     padding: 1rem;
     border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
 .prediction-item strong {
@@ -169,7 +175,7 @@ body {
 }
 
 .prediction-item.full-width {
-    grid-column: 1 / -1; /* 占满整行 */
+    grid-column: 1 / -1;
 }
 
 .number-grid {
@@ -205,11 +211,6 @@ body {
     font-size: 1rem;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-#toggle-history-btn:hover {
-    background-color: #0056b3;
 }
 
 .hidden {
@@ -228,30 +229,55 @@ table {
 
 th, td {
     padding: 0.75rem;
-    text-align: center; /* 居中显示更美观 */
-    border-bottom: 1px solid var(--border-color);
-    white-space: nowrap; /* 防止内容换行 */
+    text-align: center;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
 }
 
 thead th {
-    background-color: var(--bg-color);
+    background-color: #e9ecef;
 }
 
-/* 响应式设计 */
+/* PWA 更新提示框 */
+.update-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 15px 25px;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 2000;
+    animation: slideUp 0.3s ease-out;
+}
+
+.update-prompt-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#update-confirm-btn {
+    background-color: var(--success-color);
+    color: #fff;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+@keyframes slideUp {
+    from { bottom: -100px; opacity: 0; }
+    to { bottom: 20px; opacity: 1; }
+}
+
 @media (max-width: 600px) {
-    .navbar .container {
-        flex-direction: column;
-    }
-    .navbar-links {
-        margin-top: 1rem;
-    }
-    .navbar-links a {
-        margin: 0 0.5rem;
-    }
-    .card-title {
-        font-size: 1.5rem;
-    }
-    .prediction-grid {
-        grid-template-columns: 1fr; /* 在小屏幕上单列显示 */
-    }
+    .navbar .container { flex-direction: column; }
+    .navbar-links { margin-top: 1rem; }
+    .navbar-links a { margin: 0 0.5rem; }
+    .prediction-grid { grid-template-columns: 1fr; }
+    .update-prompt { width: 90%; border-radius: 10px; }
 }

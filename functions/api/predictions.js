@@ -1,48 +1,43 @@
 import { LotteryDB } from '../db/d1-database.js';
 
-/**
- * API 路由: /api/predictions
- * 
- * 这个路由负责从数据库中获取指定彩票类型的最新预测结果，并将其返回给前端。
- * 它需要一个查询参数 `?type=` 来指定彩票类型 (例如: /api/predictions?type=HK)。
- */
-export const onRequestGet = async ({ request, env }) => {
-    const { searchParams } = new URL(request.url);
-    const lotteryType = searchParams.get('type');
+// 定义允许的彩票类型常量，与 data.js 保持一致
+const ALLOWED_TYPES = ['HK', 'XINAO', 'LAOAO', 'LAOAO_2230'];
 
-    // 1. 验证输入参数
+/**
+ * 处理获取最新预测数据的请求 (/api/predictions)
+ */
+export const onRequestGet = async (context) => {
+    // 从上下文中解构所需的对象
+    const { request, env, json, error } = context;
+
+    const url = new URL(request.url);
+    const lotteryType = url.searchParams.get('type');
+
+    // 1. 输入验证：确保彩票类型已提供且在允许列表中
     if (!lotteryType) {
-        return new Response(JSON.stringify({ error: 'Query parameter \'type\' is required.' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return error('Query parameter \"type\" is required.', 400);
+    }
+    if (!ALLOWED_TYPES.includes(lotteryType)) {
+        return error(`Invalid lottery type '${lotteryType}'. Allowed types are: ${ALLOWED_TYPES.join(', ')}`, 400);
     }
 
     try {
-        // 2. 初始化数据库并获取最新预测
+        // 2. 数据库操作：创建数据库实例并获取最新预测
         const db = new LotteryDB(env.DB);
         const latestPrediction = await db.getLatestPrediction(lotteryType);
 
         // 3. 处理未找到预测的情况
         if (!latestPrediction) {
-            return new Response(JSON.stringify({ error: `No prediction found for type '${lotteryType}'.` }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return error(`No prediction found for type '${lotteryType}'.`, 404);
         }
 
-        // 4. 成功返回预测数据
-        return new Response(JSON.stringify(latestPrediction.predictionData), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        // 4. 成功响应：使用标准化的 json 方法返回预测数据
+        // 预测数据本身存储在 predictionData 属性中
+        return json(latestPrediction.predictionData);
 
-    } catch (error) {
-        // 5. 处理服务器内部错误
-        console.error(`Failed to fetch prediction for ${lotteryType}:`, error);
-        return new Response(JSON.stringify({ error: 'An internal server error occurred.' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+    } catch (e) {
+        // 5. 错误处理：记录服务器端错误，并返回统一的错误信息
+        console.error(`Failed to fetch prediction for ${lotteryType}:`, e);
+        return error(`Database query failed: ${e.message}`, 500);
     }
 };
