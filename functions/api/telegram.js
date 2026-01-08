@@ -1,13 +1,5 @@
 import { LotteryDB } from '../db/d1-database.js';
 
-// 注意：这些仍然是占位符 URL。
-// 您需要将它们替换为真实的数据源 URL。
-const STATIC_LOTTERY_URLS = {
-  'HK': 'https://example.com/hk_data.json',
-  'LAOAO': 'https://example.com/laoao_data.json',
-  'LAOAO_2230': 'https://example.com/laoao_2230_data.json',
-};
-
 // 将键盘文本映射到彩票类型
 const lotteryTypeMap = {
     '同步 香港': 'HK',
@@ -17,16 +9,38 @@ const lotteryTypeMap = {
 };
 
 /**
- * 根据彩票类型获取数据源 URL
+ * 根据彩票类型从环境变量中获取数据源 URL
  * @param {string} lotteryType 彩票类型 (例如: 'XINAO')
+ * @param {object} env Cloudflare 环境变量
  * @returns {string|null} 数据源 URL 或 null
  */
-function getLotteryUrl(lotteryType) {
-  if (lotteryType === 'XINAO') {
-    const year = new Date().getFullYear();
-    return `https://history.macaumarksix.com/history/macaujc2/y/${year}`;
+function getLotteryUrl(lotteryType, env) {
+  const year = new Date().getFullYear();
+  let url;
+
+  switch (lotteryType) {
+    case 'XINAO':
+      // 新澳彩使用动态年份链接
+      url = env.XINAO_URL_TEMPLATE || 'https://history.macaumarksix.com/history/macaujc2/y/${year}';
+      return url.replace('${year}', year);
+    case 'HK':
+      url = env.HK_URL;
+      break;
+    case 'LAOAO':
+      url = env.LAOAO_URL;
+      break;
+    case 'LAOAO_2230':
+      url = env.LAOAO_2230_URL;
+      break;
+    default:
+      return null;
   }
-  return STATIC_LOTTERY_URLS[lotteryType] || null;
+
+  // 对于非动态链接，如果配置了年份模板，也进行替换
+  if (url && url.includes('${year}')) {
+      return url.replace('${year}', year);
+  }
+  return url;
 }
 
 export const onRequestPost = async ({ request, env }) => {
@@ -58,7 +72,8 @@ export const onRequestPost = async ({ request, env }) => {
     const lotteryType = lotteryTypeMap[text];
     await sendMessage(chatId, `正在同步 ${lotteryType} 数据...`, botToken);
     
-    const url = getLotteryUrl(lotteryType);
+    // 将 env 对象传递给 getLotteryUrl
+    const url = getLotteryUrl(lotteryType, env);
     
     if (url) {
       try {
@@ -66,8 +81,6 @@ export const onRequestPost = async ({ request, env }) => {
         if (!response.ok) {
             throw new Error(`获取数据失败: ${response.status} ${response.statusText}`);
         }
-        // 注意: 我们需要确定真实数据源返回的JSON结构是否包含 'data' 键。
-        // 此处暂时假设与之前一致，如果数据结构不同，后续需要调整。
         const { data } = await response.json(); 
         for (const record of data) {
           await db.addRecord(lotteryType, record);
@@ -77,7 +90,7 @@ export const onRequestPost = async ({ request, env }) => {
         await sendMessage(chatId, `❌ 同步 ${lotteryType} 数据失败: ${e.message}`, botToken);
       }
     } else {
-        await sendMessage(chatId, `❌ 未配置彩票类型 "${lotteryType}" 的数据源 URL。`, botToken);
+        await sendMessage(chatId, `❌ 未在环境变量中配置 ${lotteryType} 的 URL。`, botToken);
     }
 
   } else if (text.startsWith('/delete')) {
