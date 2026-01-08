@@ -3,40 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>彩票预测</title>
+    <title>开奖记录</title> <!-- 默认标题 -->
     <link rel="stylesheet" href="styles.css">
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    <!-- Theme color for Safari -->
     <meta name="theme-color" content="#343a40">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
-            <span class="navbar-brand">彩票预测</span>
+            <span class="navbar-brand">彩票中心</span>
             <div class="navbar-links">
-                <a href="#" class="nav-link active" data-lottery-type="HK">香港彩</a>
-                <a href="#" class="nav-link" data-lottery-type="XINAO">新澳彩</a>
-                <a href="#" class="nav-link" data-lottery-type="LAOAO">老澳彩</a>
-                <a href="#" class="nav-link" data-lottery-type="LAOAO_2230">老澳彩22:30</a>
+                <!-- 导航链接，通过 URL 参数切换彩票类型 -->
+                <a href="/?type=HK" class="nav-link">香港彩</a>
+                <a href="/?type=XINAO" class="nav-link">新澳彩</a>
+                <a href="/?type=LAOAO" class="nav-link">老澳彩</a>
+                <a href="/?type=LAOAO_2230" class="nav-link">老澳彩22:30</a>
             </div>
         </div>
     </nav>
 
     <div class="container content">
-        <h2 id="lottery-title">香港彩</h2>
-        <div id="data-container" class="table-responsive">
-            <!-- 数据将通过JS动态加载到这里 -->
-        </div>
-        <div id="loading-indicator" class="loading" style="display: none;">
-            加载中...
-        </div>
-        <div id="error-message" class="alert alert-danger" style="display: none;">
-            <!-- 错误信息将显示在这里 -->
-        </div>
+        <!-- JS 将会把标题和表格渲染到这里 -->
+        <h1>开奖记录</h1>
+        <main id="app"></main> 
     </div>
 
+    <!-- 引入我们的主脚本 -->
     <script src="app.js"></script>
+
     <script>
         // 注册 Service Worker
         if ('serviceWorker' in navigator) {
