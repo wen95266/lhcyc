@@ -15,33 +15,36 @@ const lotteryTypeMap = {
  * @returns {string|null} 数据源 URL 或 null
  */
 function getLotteryUrl(lotteryType, env) {
-  const year = new Date().getFullYear();
-  let url;
-
-  switch (lotteryType) {
-    case 'XINAO':
-      // 新澳彩使用动态年份链接
-      url = env.XINAO_URL_TEMPLATE || 'https://history.macaumarksix.com/history/macaujc2/y/${year}';
-      return url.replace('${year}', year);
-    case 'HK':
-      url = env.HK_URL;
-      break;
-    case 'LAOAO':
-      url = env.LAOAO_URL;
-      break;
-    case 'LAOAO_2230':
-      url = env.LAOAO_2230_URL;
-      break;
-    default:
-      return null;
+  // 1. 检查 LOTTERY_URLS 环境变量是否存在
+  if (!env.LOTTERY_URLS) {
+    console.error('Error: LOTTERY_URLS environment variable not set.');
+    return null;
   }
 
-  // 对于非动态链接，如果配置了年份模板，也进行替换
-  if (url && url.includes('${year}')) {
-      return url.replace('${year}', year);
+  let lotteryUrls;
+  try {
+    // 2. 解析存储在环境变量中的 JSON 字符串
+    lotteryUrls = JSON.parse(env.LOTTERY_URLS);
+  } catch (e) {
+    console.error('Error: Failed to parse LOTTERY_URLS JSON string.', e);
+    return null; // 如果 JSON 格式错误，则返回 null
   }
+
+  // 3. 从解析的对象中获取特定彩票的 URL
+  let url = lotteryUrls[lotteryType];
+  if (!url) {
+    console.error(`Error: URL for lottery type "${lotteryType}" not found in LOTTERY_URLS.`);
+    return null; // 如果没有找到对应类型的 URL，返回 null
+  }
+
+  // 4. 动态替换年份
+  // 将 URL 中任何独立的四位数字（如 2024, 2025）替换为当前年份。
+  const currentYear = new Date().getFullYear().toString();
+  url = url.replace(/\b\d{4}\b/g, currentYear);
+
   return url;
 }
+
 
 export const onRequestPost = async ({ request, env }) => {
   const db = new LotteryDB(env.DB);
@@ -51,6 +54,7 @@ export const onRequestPost = async ({ request, env }) => {
     return new Response('OK');
   }
 
+  // 验证是否是管理员
   if (message.from.id.toString() !== env.TELEGRAM_ADMIN_ID) {
     return new Response('OK');
   }
@@ -59,6 +63,7 @@ export const onRequestPost = async ({ request, env }) => {
   const chatId = message.chat.id;
   const botToken = env.TELEGRAM_BOT_TOKEN;
 
+  // 定义管理员键盘
   const adminKeyboard = [
       [{ text: '同步 香港' }, { text: '同步 新澳' }],
       [{ text: '同步 老澳' }, { text: '同步 老澳22:30' }]
@@ -72,7 +77,6 @@ export const onRequestPost = async ({ request, env }) => {
     const lotteryType = lotteryTypeMap[text];
     await sendMessage(chatId, `正在同步 ${lotteryType} 数据...`, botToken);
     
-    // 将 env 对象传递给 getLotteryUrl
     const url = getLotteryUrl(lotteryType, env);
     
     if (url) {
@@ -90,7 +94,7 @@ export const onRequestPost = async ({ request, env }) => {
         await sendMessage(chatId, `❌ 同步 ${lotteryType} 数据失败: ${e.message}`, botToken);
       }
     } else {
-        await sendMessage(chatId, `❌ 未在环境变量中配置 ${lotteryType} 的 URL。`, botToken);
+        await sendMessage(chatId, `❌ 未能从 LOTTERY_URLS 环境变量中找到 ${lotteryType} 的有效 URL。请检查配置。`, botToken);
     }
 
   } else if (text.startsWith('/delete')) {
