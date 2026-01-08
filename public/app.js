@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 获取所有需要的 DOM 元素
     const latestResultContent = document.getElementById('latest-result-content');
     const predictionResultContent = document.getElementById('prediction-result-content');
     const historyRecordsContent = document.getElementById('history-records-content');
@@ -7,17 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleHistoryBtn = document.getElementById('toggle-history-btn');
     const lotteryNav = document.getElementById('lottery-nav');
 
-    // 2. 从 URL 获取彩票类型，并设置默认值
     const params = new URLSearchParams(window.location.search);
     const lotteryType = params.get('type') || 'HK';
 
-    // 3. 更新导航栏高亮状态
     updateActiveNav(lotteryType, lotteryNav);
-
-    // 4. 并行获取开奖数据和预测数据
     fetchData(lotteryType);
 
-    // 5. 为切换按钮绑定事件
     if (toggleHistoryBtn) {
         toggleHistoryBtn.addEventListener('click', () => {
             const isHidden = historySection.classList.toggle('hidden');
@@ -25,24 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. 注册 Service Worker 并在有更新时提示用户
     registerServiceWorker();
 
-    /**
-     * 注册 Service Worker 并处理更新逻辑
-     */
     function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then(reg => {
-                    console.log('SW registered!', reg);
-
-                    // 如果检测到有新的 SW 正在等待激活
-                    if (reg.waiting) {
-                        showUpdatePrompt(reg.waiting);
-                    }
-
-                    // 监听新的 SW 安装过程
+                    if (reg.waiting) showUpdatePrompt(reg.waiting);
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
                         newWorker.addEventListener('statechange', () => {
@@ -52,8 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     });
                 });
-
-                // 处理刷新逻辑
                 let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                     if (refreshing) return;
@@ -64,9 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * 显示更新提示框
-     */
     function showUpdatePrompt(worker) {
         const prompt = document.createElement('div');
         prompt.className = 'update-prompt';
@@ -77,29 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.body.appendChild(prompt);
-
         document.getElementById('update-confirm-btn').addEventListener('click', () => {
             worker.postMessage('SKIP_WAITING');
             prompt.remove();
         });
     }
 
-    /**
-     * 主函数：并行获取所有数据并触发渲染
-     */
     function fetchData(type) {
-        // 显示加载状态
-        latestResultContent.innerHTML = '<p class="loading-placeholder">正在加载最新开奖...</p>';
-        predictionResultContent.innerHTML = '<p class="loading-placeholder">正在加载预测...</p>';
+        latestResultContent.innerHTML = '<p class="loading-placeholder">🔍 正在扫描开奖规律...</p>';
+        predictionResultContent.innerHTML = '<p class="loading-placeholder">🔮 正在进行规律预测...</p>';
         historyRecordsContent.innerHTML = '<p class="loading-placeholder">正在加载历史记录...</p>';
 
         Promise.all([
             fetch(`/api/data?type=${type}`),
             fetch(`/api/predictions?type=${type}`)
         ]).then(async ([recordsRes, predictionRes]) => {
-            // 开奖记录处理
             if (recordsRes.ok) {
-                const records = await recordsRes.json();
+                const res = await recordsRes.json();
+                const records = res.data || [];
                 if (records.length > 0) {
                     renderLatestResult(records[0], latestResultContent);
                     renderHistoryRecords(records, historyRecordsContent);
@@ -108,21 +81,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // 预测数据处理
             if (predictionRes.ok) {
-                const prediction = await predictionRes.json();
-                renderPrediction(prediction, predictionResultContent);
+                const res = await predictionRes.json();
+                const p = res.data;
+                if (p && !p.error) {
+                    renderPrediction(p, predictionResultContent);
+                } else {
+                    predictionResultContent.innerHTML = '<p>暂无可用预测，请通过机器人执行规律分析。</p>';
+                }
             } else {
-                predictionResultContent.innerHTML = '<p>暂无可用预测，请通过机器人生成。</p>';
+                predictionResultContent.innerHTML = '<p>暂无可用预测，请通过机器人执行规律分析。</p>';
             }
         }).catch(err => {
             console.error('Fetch error:', err);
         });
     }
 
-    /**
-     * 渲染最新开奖结果
-     */
     function renderLatestResult(record, container) {
         const numbers = record.openCode.split('+').map(s => s.trim());
         const mainNumbers = numbers[0].split(',');
@@ -151,25 +125,23 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    /**
-     * 渲染预测结果
-     */
     function renderPrediction(prediction, container) {
         container.innerHTML = `
+            <div class="prediction-header">
+                <span class="prediction-badge">大数据规律分析</span>
+                <small>分析时间: ${prediction.predictionTime || '刚刚'}</small>
+            </div>
             <div class="prediction-grid">
                 <div class="prediction-item"><strong>推荐六肖:</strong> <span>${prediction.sixZodiacs.join(', ')}</span></div>
                 <div class="prediction-item"><strong>主攻波色:</strong> <span style="font-weight:bold; color:${prediction.mainWave.includes('红')?'#e74c3c':prediction.mainWave.includes('蓝')?'#3498db':'#2ecc71'}">${prediction.mainWave}</span></div>
                 <div class="prediction-item"><strong>防守波色:</strong> <span>${prediction.defenseWave}</span></div>
                 <div class="prediction-item"><strong>推荐头数:</strong> <span>${prediction.twoHeads.join(', ')}</span></div>
                 <div class="prediction-item"><strong>推荐尾数:</strong> <span>${prediction.fiveTails.join(', ')}</span></div>
-                <div class="prediction-item full-width"><strong>精选18码:</strong> <div class="number-grid">${prediction.eighteenNumbers.map(n=>`<span>${n}</span>`).join('')}</div></div>
+                <div class="prediction-item full-width"><strong>规律精选18码:</strong> <div class="number-grid">${prediction.eighteenNumbers.map(n=>`<span>${n}</span>`).join('')}</div></div>
             </div>
         `;
     }
 
-    /**
-     * 渲染历史记录
-     */
     function renderHistoryRecords(records, container) {
         container.innerHTML = `
             <div class="table-responsive">
