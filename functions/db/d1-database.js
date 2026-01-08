@@ -1,43 +1,34 @@
 /**
  * LotteryDB - 数据访问层 (Data Access Layer)
  * 
- * 这个类封装了所有与 Cloudflare D1 数据库的交互逻辑，为上层应用提供了一套清晰、
- * 安全且健壮的数据操作接口。它负责处理所有 SQL 查询，并内置了详细的错误处理机制。
+ * 职责：封装所有与 Cloudflare D1 数据库的底层交互。
+ * 特点：
+ * 1. 参数化查询，彻底杜绝 SQL 注入。
+ * 2. INSERT OR IGNORE 实现幂等性同步。
+ * 3. 完善的错误捕获与详细日志记录。
  */
 export class LotteryDB {
-    /**
-     * @param {D1Database} db D1 数据库实例，由 Cloudflare Worker 环境提供。
-     */
     constructor(db) {
-        if (!db) {
-            throw new Error("Database connection (D1) is required.");
-        }
+        if (!db) throw new Error("Database connection (D1) is missing.");
         this.db = db;
     }
 
     /**
-     * 添加一条开奖记录。使用 INSERT OR IGNORE 避免重复插入，实现幂等性。
-     * @param {string} lotteryType 彩票类型 (e.g., 'HK')。
-     * @param {object} record 开奖记录对象。
-     * @returns {Promise<D1Result>} D1 操作结果。
+     * 添加开奖记录 (同步用)
      */
     async addRecord(lotteryType, record) {
         const { expect, openTime, openCode, wave, zodiac } = record;
         const sql = 'INSERT OR IGNORE INTO lottery (lotteryType, expect, openTime, openCode, wave, zodiac) VALUES (?, ?, ?, ?, ?, ?)';
         try {
-            const stmt = this.db.prepare(sql);
-            return await stmt.bind(lotteryType, expect, openTime, openCode, wave, zodiac).run();
+            return await this.db.prepare(sql).bind(lotteryType, expect, openTime, openCode, wave, zodiac).run();
         } catch (e) {
-            console.error(`DB Error: Failed to execute addRecord with SQL: ${sql}`, e);
-            throw new Error(`Database operation failed: ${e.message}`);
+            console.error(`[DB Error] addRecord failed:`, e);
+            throw e;
         }
     }
 
     /**
-     * 获取指定类型的开奖记录列表，按时间倒序排列。
-     * @param {string} lotteryType 彩票类型。
-     * @param {number|null} limit 限制返回的记录数量。
-     * @returns {Promise<Array<object>>} 开奖记录数组。
+     * 获取开奖记录列表
      */
     async getRecords(lotteryType, limit = null) {
         let sql = 'SELECT * FROM lottery WHERE lotteryType = ? ORDER BY openTime DESC';
@@ -49,75 +40,58 @@ export class LotteryDB {
         }
 
         try {
-            const stmt = this.db.prepare(sql);
-            const { results } = await stmt.bind(...params).all();
+            const { results } = await this.db.prepare(sql).bind(...params).all();
             return results || [];
         } catch (e) {
-            console.error(`DB Error: Failed to execute getRecords with SQL: ${sql}`, e);
-            throw new Error(`Database operation failed: ${e.message}`);
+            console.error(`[DB Error] getRecords failed:`, e);
+            throw e;
         }
     }
 
     /**
-     * 根据 ID 删除一条开奖记录。
-     * @param {number|string} recordId 要删除的记录 ID。
-     * @returns {Promise<D1Result>} D1 操作结果。
+     * 删除单条记录
      */
     async deleteRecord(recordId) {
-        const sql = 'DELETE FROM lottery WHERE id = ?';
         try {
-            const stmt = this.db.prepare(sql);
-            // 确保传入的是数字类型
-            return await stmt.bind(Number(recordId)).run();
+            return await this.db.prepare('DELETE FROM lottery WHERE id = ?').bind(Number(recordId)).run();
         } catch (e) {
-            console.error(`DB Error: Failed to execute deleteRecord with SQL: ${sql}`, e);
-            throw new Error(`Database operation failed: ${e.message}`);
+            console.error(`[DB Error] deleteRecord failed:`, e);
+            throw e;
         }
     }
 
     /**
-     * 添加一条新的预测记录。
-     * @param {string} lotteryType 彩票类型。
-     * @param {object} predictionData 预测数据对象。
-     * @returns {Promise<D1Result>} D1 操作结果。
+     * 存储预测结果
      */
     async addPrediction(lotteryType, predictionData) {
         const sql = 'INSERT INTO predictions (lotteryType, predictionData) VALUES (?, ?)';
         try {
-            const stmt = this.db.prepare(sql);
-            // 将预测对象转换为 JSON 字符串进行存储
-            return await stmt.bind(lotteryType, JSON.stringify(predictionData)).run();
+            // 存储前将对象序列化为 JSON 字符串
+            return await this.db.prepare(sql).bind(lotteryType, JSON.stringify(predictionData)).run();
         } catch (e) {
-            console.error(`DB Error: Failed to execute addPrediction with SQL: ${sql}`, e);
-            throw new Error(`Database operation failed: ${e.message}`);
+            console.error(`[DB Error] addPrediction failed:`, e);
+            throw e;
         }
     }
 
     /**
-     * 获取指定类型的最新一条预测记录。
-     * @param {string} lotteryType 彩票类型。
-     * @returns {Promise<object|null>} 最新的预测记录，如果找不到则返回 null。
+     * 获取最新的一条预测结果
      */
     async getLatestPrediction(lotteryType) {
         const sql = 'SELECT * FROM predictions WHERE lotteryType = ? ORDER BY createdAt DESC LIMIT 1';
         try {
-            const stmt = this.db.prepare(sql);
-            const result = await stmt.bind(lotteryType).first();
-
-            // 如果找到了记录，并且 predictionData 是一个 JSON 字符串，就安全地解析它
-            if (result && typeof result.predictionData === 'string') {
+            const result = await this.db.prepare(sql).bind(lotteryType).first();
+            if (result && result.predictionData) {
                 try {
                     result.predictionData = JSON.parse(result.predictionData);
                 } catch (parseError) {
-                    console.error(`DB Parse Error: Failed to parse predictionData JSON for record ID ${result.id}:`, parseError);
-                    // 返回记录，但 predictionData 可能是无效的
-                    result.predictionData = { error: "Invalid JSON format in database" }; 
+                    console.error("[DB Error] Failed to parse prediction JSON:", parseError);
                 }
             }
             return result;
         } catch (e) {
-            console.error(`DB Error: Failed to execute getLatestPrediction with SQL: ${sql}`, e);
-            throw new Error(`Database operation failed: ${e.message}`);
+            console.error(`[DB Error] getLatestPrediction failed:`, e);
+            throw e;
         }
     }
 }
