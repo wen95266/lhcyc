@@ -1,6 +1,8 @@
+
 {
-  "name": "彩票预测",
-  "short_name": "彩票预测",
+  "name": "六合彩预测",
+  "short_name": "六合彩预测",
+  "description": "一个基于历史数据分析的彩票预测应用",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f8f9fa",
@@ -8,14 +10,23 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-192x192.png",
+      "src": "/icons/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-512x512.png",
+      "src": "/icons/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/screenshot-desktop-1.png",
+      "type": "image/png",
+      "sizes": "1920x1080",
+      "form_factor": "wide",
+      "label": "应用主界面"
     }
   ]
 }
