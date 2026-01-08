@@ -4,21 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>彩票预测</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles.css">
+    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
+    <!-- Theme color for Safari -->
+    <meta name="theme-color" content="#343a40">
 </head>
 <body>
-    <nav class="top-nav">
-        <a href="#" class="nav-link active" data-lottery-type="HK">香港</a>
-        <a href="#" class="nav-link" data-lottery-type="XINAO">新澳</a>
-        <a href="#" class="nav-link" data-lottery-type="LAOAO">老澳</a>
-        <a href="#" class="nav-link" data-lottery-type="LAOAO_2230">老澳22:30</a>
-    </nav>
-    <main>
-        <div id="prediction-result">
-            <!-- 预测结果将显示在这里 -->
+    <nav class="navbar">
+        <div class="container">
+            <span class="navbar-brand">彩票预测</span>
+            <div class="navbar-links">
+                <a href="#" class="nav-link active" data-lottery-type="HK">香港彩</a>
+                <a href="#" class="nav-link" data-lottery-type="XINAO">新澳彩</a>
+                <a href="#" class="nav-link" data-lottery-type="LAOAO">老澳彩</a>
+                <a href="#" class="nav-link" data-lottery-type="LAOAO_2230">老澳彩22:30</a>
+            </div>
         </div>
-    </main>
-    <script src="script.js"></script>
+    </nav>
+
+    <div class="container content">
+        <h2 id="lottery-title">香港彩</h2>
+        <div id="data-container" class="table-responsive">
+            <!-- 数据将通过JS动态加载到这里 -->
+        </div>
+        <div id="loading-indicator" class="loading" style="display: none;">
+            加载中...
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display: none;">
+            <!-- 错误信息将显示在这里 -->
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // 注册 Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
