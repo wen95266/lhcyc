@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>彩票预测</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <header>
+    <h1>彩票预测</h1>
+  </header>
+  <main>
+    <div class="lottery-selector">
+      <select id="lottery-type">
+        <option value="HK">香港</option>
+        <option value="XINAO">新澳</option>
+        <option value="LAOAO">老澳</option>
+        <option value="LAOAO_2230">老澳22:30</option>
+      </select>
+      <button id="predict-btn">获取最新预测</button>
+    </div>
+    <div id="prediction-result"></div>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
